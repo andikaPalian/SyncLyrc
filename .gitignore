@@ -1,3 +1,9 @@
+# Local-only AI rules & planning docs
+AGENTS.md
+docs/
+.agents/
+.codex/
+
 # Python & Worker caches on Drive D:
 worker/.venv/
 worker/.cache/
@@ -6,10 +12,14 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
 
 # Node / Web
-web/node_modules/
+node_modules/
 web/dist/
+coverage/
 *.tsbuildinfo
 
 # Reference audio & LRC files (private test data)
@@ -18,7 +28,8 @@ reference/*
 
 # Environment & OS
 .env
-.env.local
+.env.*
+!.env.example
+*.log
 .DS_Store
 Thumbs.db
-AGENTS.md

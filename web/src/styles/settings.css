@@ -1,0 +1,14 @@
+.settings-dialog { padding: 0; border: 0; background: transparent; width: min(540px, calc(100% - 32px)); max-width: none; max-height: 90vh; overflow: visible; color: var(--ink); }
+.settings-dialog::backdrop { background: #20282b70; }
+.modal-card { display: flex; flex-direction: column; gap: 22px; padding: 25px; max-height: 90vh; overflow-y: auto; border: 1.5px solid var(--ink); border-radius: 15px; background: var(--paper); }
+.modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+.modal-header h2 { font-size: 23px; letter-spacing: -.6px; }
+.modal-header p { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.icon-button { display: grid; place-items: center; padding: 0; width: 34px; height: 34px; flex-shrink: 0; background: var(--paper); border: 1px solid var(--ink); border-radius: 50%; }
+.icon-button:hover { background: var(--lilac); }
+.modal-actions { display: flex; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 18px; }
+.advanced-settings { border-top: 1px solid var(--line); padding-top: 16px; font-size: 13px; }
+.advanced-settings > summary { font-weight: 600; }
+.advanced-settings > div { display: flex; flex-direction: column; gap: 18px; padding-top: 20px; }
+.setting-help { padding: 10px 12px; background: #f0ede2; border-radius: 7px; }
+@media (max-width: 600px) { .modal-card { padding: 20px; gap: 20px; } }
