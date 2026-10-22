@@ -21,6 +21,7 @@ export function parseLrcText(lrcText: string): LrcDocument {
   };
 
   const lines: LrcLine[] = [];
+  const cueStarts: number[] = [];
   let hasWordTags = false;
 
   for (const raw of lrcText.split(/\r?\n/)) {
@@ -52,6 +53,7 @@ export function parseLrcText(lrcText: string): LrcDocument {
     if (!lineMatch) continue;
 
     const lineStart = parseTimestamp(lineMatch[1], lineMatch[2], lineMatch[3]);
+    cueStarts.push(lineStart);
     const body = lineMatch[4];
     if (!body.trim()) {
       // Instrumental break marker line
@@ -106,6 +108,14 @@ export function parseLrcText(lrcText: string): LrcDocument {
         interpolated: false,
       });
     }
+  }
+
+  for (const line of lines) {
+    const boundary = Math.min(
+      ...cueStarts.filter(start => start > line.start),
+      metadata.durationSeconds > 0 ? metadata.durationSeconds : Number.POSITIVE_INFINITY
+    );
+    line.end = Math.max(line.start, Math.min(line.end, boundary));
   }
 
   return {

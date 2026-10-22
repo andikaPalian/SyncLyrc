@@ -6,6 +6,7 @@ import {
 } from "@/domain/lyrics/matcher";
 import { buildSpellingPrompt, parseManualLyricLines } from "@/domain/lyrics/normalizer";
 import { evaluateQualityFlags } from "@/domain/lyrics/qualityFlags";
+import { normalizeLrcLines } from "@/domain/lrc/timing";
 import { decodeAudioToWav16kMono } from "@/services/audio/audioDecoderService";
 import { WorkerAlignmentClient } from "@/services/alignment/workerAlignmentClient";
 import { getCachedLrc, saveCachedLrc } from "@/services/storage/lrcCacheRepository";
@@ -38,7 +39,7 @@ export async function runSyncLrcPipeline(
   const decoded = await decodeAudioToWav16kMono(input.file);
 
   const hashKey = await computeSha256Hex([
-    "whisperx-v3",
+    "whisperx-v5-manual-timing",
     decoded.wavBuffer,
     input.manualLyrics.trim(),
     input.language,
@@ -51,17 +52,19 @@ export async function runSyncLrcPipeline(
   if (!input.bypassCache) {
     const cached = await getCachedLrc(hashKey);
     if (cached) {
+      const lines = normalizeLrcLines(cached.lines, decoded.durationSeconds);
       report("Membuka hasil tersimpan…");
       return {
         ...cached,
         mode: input.mode,
+        lines,
         metadata: {
           ...cached.metadata,
           title: input.title || input.file.name.replace(/\.[^.]+$/, ""),
           artist: input.artist || "Unknown Artist",
           album: input.album || "-",
         },
-        flags: evaluateQualityFlags(cached.lines, input.settings.longWordThresholdSec),
+        flags: evaluateQualityFlags(lines, input.settings.longWordThresholdSec),
       };
     }
   }
@@ -106,6 +109,10 @@ export async function runSyncLrcPipeline(
       filtered.words,
       decoded.durationSeconds
     );
+    if ((input.language === "id" || input.language === "en") && filtered.words.length >= 10 &&
+        windows.filter(window => !window.interpolated).length < windows.length * 0.2) {
+      throw new AppError("LYRICS_MISMATCH", "Sebagian besar lirik manual tidak cocok dengan vokal yang terdeteksi. Pastikan file audio dan lirik berasal dari lagu/versi yang sama, atau periksa transkripsi otomatis terlebih dahulu.");
+    }
 
     lines = windows.map((win) => ({ ...win, words: [], aligned: false }));
   }
@@ -113,6 +120,8 @@ export async function runSyncLrcPipeline(
   if (lines.length === 0) {
     throw new AppError("NO_LYRICS", "Tidak ada lirik terdeteksi. Coba model lebih besar atau masukkan lirik manual.");
   }
+
+  lines = normalizeLrcLines(lines, decoded.durationSeconds);
 
   report("Menyelaraskan waktu setiap kata…");
   const alignRes = await new WorkerAlignmentClient(input.settings.workerBaseUrl).alignLines({
@@ -133,6 +142,7 @@ export async function runSyncLrcPipeline(
       aligned,
     };
   });
+  lines = normalizeLrcLines(lines, decoded.durationSeconds);
   const sourceEngine = `${asrResult.modelUsed}+whisperx@${input.settings.processingDevice}`;
   const flags = evaluateQualityFlags(
     lines,

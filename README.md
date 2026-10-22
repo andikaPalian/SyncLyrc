@@ -18,6 +18,10 @@ Transkripsi lokal menggunakan **faster-whisper** untuk mengenali teks, kemudian 
 
 Musik, vokal bertumpuk, dan instrumen keras dapat menyebabkan teks atau waktu keliru. Periksa hasil sebelum digunakan. Baris yang gagal alignment ditandai untuk ditinjau dan memakai timestamp per kalimat.
 
+Pada mode audio + lirik manual, gunakan teks dari lagu dan versi audio yang sama, termasuk urutan pengulangan chorus. Pencocokan memakai urutan transkripsi dan membagi jeda antarbagian yang terdeteksi; baris tanpa pasangan yang cukup tetap ditandai untuk ditinjau. Untuk Indonesia/Inggris, ketidakcocokan yang sangat besar dihentikan sebelum alignment agar tidak menghasilkan waktu kata yang menyesatkan. Periksa transkripsi otomatis atau pilihan model jika pesan ini muncul.
+
+Hasil disimpan dan diekspor dengan urutan baris serta batas waktu kata yang tidak melewati baris berikutnya atau durasi audio. Jika waktu kata tidak dapat dipertahankan, teks tetap disertakan sebagai per kalimat. Perubahan waktu di editor diperiksa dengan aturan yang sama. Ini menjaga format LRC; tidak menjamin ketepatan pengenalan terhadap seluruh jenis vokal. Gunakan audio yang sama dengan audio di platform tujuan saat meninjau waktu.
+
 ## Persyaratan laptop
 
 Panduan ini untuk **Windows 64-bit dan PowerShell**. Versi saat ini memakai path tetap **`D:\synclyrc`** pada skrip dan konfigurasi. Laptop lain harus memiliki drive `D:` dan menempatkan proyek di lokasi yang sama. Lokasi lain, Linux, dan macOS belum didukung oleh skrip ini tanpa penyesuaian kode.

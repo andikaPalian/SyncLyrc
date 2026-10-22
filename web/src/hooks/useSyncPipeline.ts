@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { evaluateQualityFlags } from "@/domain/lyrics/qualityFlags";
+import { normalizeLrcLines } from "@/domain/lrc/timing";
 import {
   runSyncLrcPipeline,
   type SyncPipelineInput,
@@ -57,6 +58,7 @@ export function useSyncPipeline(longWordThresholdSec: number) {
             words,
           };
         });
+        const safeLines = normalizeLrcLines(lines, prev.metadata.durationSeconds);
         return {
           ...prev,
           metadata: {
@@ -64,8 +66,8 @@ export function useSyncPipeline(longWordThresholdSec: number) {
             reviewed: true,
             by: `SyncLyrc ${prev.sourceEngine}; ditinjau`,
           },
-          lines,
-          flags: evaluateQualityFlags(lines, longWordThresholdSec),
+          lines: safeLines,
+          flags: evaluateQualityFlags(safeLines, longWordThresholdSec),
         };
       });
     },
@@ -94,6 +96,7 @@ export function useSyncPipeline(longWordThresholdSec: number) {
             words,
           };
         });
+        const safeLines = normalizeLrcLines(lines, prev.metadata.durationSeconds);
         return {
           ...prev,
           metadata: {
@@ -101,8 +104,8 @@ export function useSyncPipeline(longWordThresholdSec: number) {
             reviewed: true,
             by: `SyncLyrc ${prev.sourceEngine}; ditinjau`,
           },
-          lines,
-          flags: evaluateQualityFlags(lines, longWordThresholdSec),
+          lines: safeLines,
+          flags: evaluateQualityFlags(safeLines, longWordThresholdSec),
         };
       });
     },
@@ -123,6 +126,7 @@ export function useSyncPipeline(longWordThresholdSec: number) {
             end: Math.max(0.05, Number((w.end + deltaSec).toFixed(2))),
           })),
         }));
+        const safeLines = normalizeLrcLines(lines, prev.metadata.durationSeconds);
         return {
           ...prev,
           metadata: {
@@ -130,8 +134,8 @@ export function useSyncPipeline(longWordThresholdSec: number) {
             reviewed: true,
             by: `SyncLyrc ${prev.sourceEngine}; ditinjau`,
           },
-          lines,
-          flags: evaluateQualityFlags(lines, longWordThresholdSec),
+          lines: safeLines,
+          flags: evaluateQualityFlags(safeLines, longWordThresholdSec),
         };
       });
     },

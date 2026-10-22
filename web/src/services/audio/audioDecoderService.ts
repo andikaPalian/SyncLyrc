@@ -49,6 +49,6 @@ export async function decodeAudioToWav16kMono(file: File): Promise<DecodedAudio1
   return {
     wavBlob: new Blob([wavBuffer], { type: "audio/wav" }),
     wavBuffer,
-    durationSeconds: Number(decoded.duration.toFixed(2)),
+    durationSeconds: decoded.duration,
   };
 }

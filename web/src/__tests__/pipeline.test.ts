@@ -75,4 +75,41 @@ describe("WhisperX pipeline", () => {
     expect(WorkerAlignmentClient.prototype.alignLines).toHaveBeenCalledWith(expect.objectContaining({ device: "cuda" }));
     expect(doc.sourceEngine).toContain("whisperx@cuda");
   });
+
+  it("normalizes manual windows and rejects conflicting word alignment before saving", async () => {
+    vi.mocked(decodeAudioToWav16kMono).mockResolvedValue({wavBlob: new Blob(["wav"]), wavBuffer: new ArrayBuffer(4), durationSeconds: 1});
+    vi.mocked(LocalWhisperProvider.prototype.transcribe).mockResolvedValue({...asr, words: [], segments: []});
+    vi.mocked(WorkerAlignmentClient.prototype.alignLines).mockResolvedValue({model_used: "test", processing_ms: 0, separated: false, lines: [
+      {index: 0, aligned: true, words: [{word: "first", start: 0.8, end: 2, score: 0.9}]},
+      {index: 1, aligned: true, words: [{word: "second", start: 0.2, end: 0.4, score: 0.9}]},
+    ]});
+    const doc = await runSyncLrcPipeline({...input, manualLyrics: "first\nsecond"});
+    expect(doc.lines[0].end).toBeLessThanOrEqual(doc.lines[1].start);
+    expect(doc.lines[1].end).toBeLessThanOrEqual(1);
+    expect(doc.lines[1].aligned).toBe(false);
+    expect(vi.mocked(saveCachedLrc).mock.lastCall?.[1]).toEqual(doc);
+    const windows = vi.mocked(WorkerAlignmentClient.prototype.alignLines).mock.lastCall?.[0].lines ?? [];
+    expect(windows).toHaveLength(2);
+    expect(windows[0].end).toBeLessThanOrEqual(windows[1].start);
+  });
+
+  it("stops unrelated manual lyrics before alignment or caching a misleading success", async () => {
+    vi.mocked(LocalWhisperProvider.prototype.transcribe).mockResolvedValue({...asr,
+      words: Array.from({length: 12}, (_,index) => ({word: "sunshine", start: index * 0.2, end: index * 0.2 + 0.1})),
+    });
+    await expect(runSyncLrcPipeline({...input, manualLyrics: "different lyrics\nunrelated verse\nmissing refrain"})).rejects.toThrow("Sebagian besar lirik manual tidak cocok");
+    expect(WorkerAlignmentClient.prototype.alignLines).not.toHaveBeenCalled();
+    expect(saveCachedLrc).not.toHaveBeenCalled();
+  });
+
+  it("keeps the exact audio duration when constraining the last aligned word", async () => {
+    vi.mocked(decodeAudioToWav16kMono).mockResolvedValue({wavBlob: new Blob(["wav"]), wavBuffer: new ArrayBuffer(4), durationSeconds: 4.009977});
+    vi.mocked(WorkerAlignmentClient.prototype.alignLines).mockResolvedValue({model_used: "test", processing_ms: 0, separated: false, lines: [
+      {index: 0, aligned: true, words: [{word: "Hello", start: 3.8, end: 4.01, score: 0.9}]},
+    ]});
+    const doc = await runSyncLrcPipeline(input);
+    expect(doc.metadata.durationSeconds).toBe(4.009977);
+    expect(doc.lines[0].end).toBe(4);
+    expect(formatLrcDocument(doc)).toContain("Hello<00:04.00>");
+  });
 });

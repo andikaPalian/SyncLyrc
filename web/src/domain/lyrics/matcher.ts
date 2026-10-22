@@ -1,6 +1,7 @@
 import type { LyricLineWindow, TranscriptionSegment, WordTimestamp } from "@/types/domain";
 import type { LrcLine } from "@/types/lrc";
 import { normalizeWord, parseManualLyricLines, tokenizeLyricLines } from "./normalizer";
+import { buildManualWindows } from "./manualWindows";
 
 export function normalizedSimilarity(a: string, b: string): number {
   if (!a || !b) return 0;
@@ -37,7 +38,7 @@ export function matchLyricsToTranscribedWords(
   const n = lyricTokens.length;
   const m = transcribedWords.length;
   const GAP = -0.45;
-  const MIN_SIM = 0.48;
+  const MIN_SIM = 0.65;
 
   const score = Array.from({ length: n + 1 }, () => new Float64Array(m + 1));
   const trace = Array.from({ length: n + 1 }, () => new Uint8Array(m + 1)); // 1=diag, 2=up, 3=left
@@ -121,81 +122,7 @@ export function matchLyricsToTranscribedWords(
     }
   });
 
-  const PADDING = 0.3;
-  const result: LyricLineWindow[] = lines.map((text, idx) => {
-    const hit = rawWindows[idx];
-    if (hit) {
-      return {
-        index: idx,
-        text,
-        start: Number(Math.max(0, hit.start - PADDING).toFixed(3)),
-        end: Number(
-          Math.min(audioDurationSec, Math.max(hit.end + PADDING, hit.start + 0.25)).toFixed(3)
-        ),
-        interpolated: false,
-        matchedWords: hit.matched,
-      };
-    }
-    return {
-      index: idx,
-      text,
-      start: 0,
-      end: 0,
-      interpolated: true,
-      matchedWords: [],
-    };
-  });
-
-  // Interpolate missing windows proportionally between anchored neighbors
-  let idx = 0;
-  while (idx < result.length) {
-    if (!result[idx].interpolated) {
-      idx++;
-      continue;
-    }
-    const startIdx = idx;
-    while (idx < result.length && result[idx].interpolated) {
-      idx++;
-    }
-    const endIdx = idx - 1;
-    const prevEnd = startIdx > 0 ? result[startIdx - 1].end : 0;
-    const nextStart =
-      idx < result.length ? result[idx].start : Math.max(prevEnd + 1, audioDurationSec);
-    const span = Math.max(0.5 * (endIdx - startIdx + 1), nextStart - prevEnd);
-
-    const weights = [];
-    let totalWeight = 0;
-    for (let k = startIdx; k <= endIdx; k++) {
-      const w = Math.max(4, result[k].text.length);
-      weights.push(w);
-      totalWeight += w;
-    }
-
-    let cursor = prevEnd;
-    for (let k = startIdx; k <= endIdx; k++) {
-      const share = (weights[k - startIdx] / totalWeight) * span;
-      result[k].start = Number(cursor.toFixed(3));
-      result[k].end = Number(Math.min(audioDurationSec, cursor + share).toFixed(3));
-      cursor += share;
-    }
-  }
-
-  // Keep starts ordered; padded windows may overlap for adjacent sung lines.
-  for (let k = 1; k < result.length; k++) {
-    if (result[k].start < result[k - 1].start + 0.05) {
-      result[k].start = Number((result[k - 1].start + 0.05).toFixed(3));
-    }
-    if (result[k].end <= result[k].start) {
-      result[k].end = Number(Math.min(audioDurationSec, result[k].start + 0.5).toFixed(3));
-    }
-  }
-
-  for (const window of result) {
-    window.start = Math.max(0, Math.min(window.start, audioDurationSec - 0.02));
-    window.end = Math.min(audioDurationSec, Math.max(window.end, window.start + 0.02));
-  }
-
-  return result;
+  return buildManualWindows(lines, rawWindows, audioDurationSec);
 }
 
 export function buildAutomaticLinesFromAsr(
